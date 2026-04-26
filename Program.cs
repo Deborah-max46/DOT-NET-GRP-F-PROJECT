@@ -5,29 +5,27 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
+using CloudinaryDotNet;
 
 QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var port = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrEmpty(port))
-{
-    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-}
+builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var pgConn = Environment.GetEnvironmentVariable("DATABASE_URL");
+var connectionString = pgConn
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("No connection string found.");
 
-var useSqlite = builder.Environment.IsProduction() 
-    || Environment.GetEnvironmentVariable("USE_SQLITE") == "1";
+var usePostgres = pgConn != null;
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    if (useSqlite)
-        options.UseSqlite(connectionString);
+    if (usePostgres)
+        options.UseNpgsql(connectionString);
     else
-        options.UseSqlServer(connectionString);
+        options.UseSqlite(connectionString);
 });
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
@@ -58,6 +56,13 @@ builder.Services.Configure<FormOptions>(o =>
 });
 builder.Services.AddHttpContextAccessor();
 
+// Cloudinary
+builder.Services.AddSingleton<Cloudinary>(_ =>
+{
+    var c = builder.Configuration.GetSection("Cloudinary");
+    return new Cloudinary(new Account(c["CloudName"], c["ApiKey"], c["ApiSecret"]))  { Api = { Secure = true } };
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -82,10 +87,10 @@ app.MapRazorPages();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (useSqlite)
-        await db.Database.EnsureCreatedAsync();
-    else
+    if (usePostgres)
         await db.Database.MigrateAsync();
+    else
+        await db.Database.EnsureCreatedAsync();
 }
 
 await DbInitializer.SeedAsync(app.Services);

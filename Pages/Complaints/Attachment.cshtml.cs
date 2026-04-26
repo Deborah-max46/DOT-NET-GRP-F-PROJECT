@@ -15,18 +15,15 @@ public class AttachmentModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _users;
     private readonly ComplaintWorkflowService _workflow;
-    private readonly ComplaintAttachmentStorage _storage;
 
     public AttachmentModel(
         ApplicationDbContext db,
         UserManager<ApplicationUser> users,
-        ComplaintWorkflowService workflow,
-        ComplaintAttachmentStorage storage)
+        ComplaintWorkflowService workflow)
     {
         _db = db;
         _users = users;
         _workflow = workflow;
-        _storage = storage;
     }
 
     public async Task<IActionResult> OnGetAsync(int id)
@@ -36,21 +33,15 @@ public class AttachmentModel : PageModel
             .Include(a => a.Complaint)
             .FirstOrDefaultAsync(a => a.Id == id);
 
-        if (att == null)
-            return NotFound();
+        if (att == null) return NotFound();
 
         var uid = _users.GetUserId(User);
-        if (uid == null)
-            return Forbid();
+        if (uid == null) return Forbid();
 
         var access = await _workflow.GetAccessAsync(att.Complaint, uid, User);
-        if (access == null || !access.CanView)
-            return Forbid();
+        if (access == null || !access.CanView) return Forbid();
 
-        var path = _storage.GetPhysicalPath(att.ComplaintId, att.StoredFileName);
-        if (!System.IO.File.Exists(path))
-            return NotFound();
-
-        return PhysicalFile(path, att.ContentType, att.FileName);
+        // StoredFileName now holds the full R2 public URL
+        return Redirect(att.StoredFileName);
     }
 }

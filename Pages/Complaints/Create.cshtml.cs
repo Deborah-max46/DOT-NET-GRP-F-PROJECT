@@ -94,7 +94,7 @@ public class CreateModel : PageModel
                     ComplaintId = complaint.Id,
                     UploadedByUserId = uid,
                     FileName = Path.GetFileName(file.FileName),
-                    StoredFileName = meta.Value.StoredFileName,
+                    StoredFileName = meta.Value.RelativeWebPath,
                     ContentType = meta.Value.ContentType,
                     FileSizeBytes = meta.Value.Size,
                     CreatedAt = DateTime.UtcNow
