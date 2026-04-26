@@ -6,6 +6,7 @@ RUN dotnet publish ConsumersVoiceSystemPrototype.csproj -c Release -o /app/publi
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app/publish .
+RUN mkdir -p /data
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "ConsumersVoiceSystemPrototype.dll"]
