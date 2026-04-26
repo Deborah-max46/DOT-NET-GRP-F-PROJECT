@@ -98,10 +98,7 @@ app.MapRazorPages();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (usePostgres)
-        await db.Database.MigrateAsync();
-    else
-        await db.Database.EnsureCreatedAsync();
+    await db.Database.EnsureCreatedAsync();
 }
 
 await DbInitializer.SeedAsync(app.Services);
