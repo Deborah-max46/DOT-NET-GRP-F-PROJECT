@@ -14,11 +14,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
 var pgConn = Environment.GetEnvironmentVariable("DATABASE_URL");
-var connectionString = pgConn
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("No connection string found.");
-
 var usePostgres = pgConn != null;
+
+string connectionString;
+if (pgConn != null)
+{
+    // Convert postgresql://user:pass@host:port/db → Npgsql format
+    var uri = new Uri(pgConn);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')}" +
+                       $";Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("No connection string found.");
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
